@@ -36,13 +36,16 @@ class BackyardFlyer(Drone):
 
     This triggers when `MsgID.LOCAL_POSITION` is received and self.local_position contains new data
     """
-    if self.flight_state == States.TAKEOFF:
-      # coordinate conversion 
-      altitude = -1.0 * self.local_position[2]
-      self.waypoint_transition()
-      # check if altitude is within 95% of target
-      if altitude > 0.95 * self.target_position[2]:
-        self.landing_transition()
+    if self.flight_state == States.TAKEOFF and - 1.0 * self.local_position[2] > 0.95 * self.target_position[2]:
+    	self.all_waypoints = self.calculate_box()
+    	self.waypoint_transition()
+    elif self.flight_state == States.WAYPOINT: # Wasn't working with the and. Placed an If statement instead.
+    	if np.linalg.norm(self.target_position[0:2] - self.local_position[0:2]) < 1.0:
+    		if len(self.all_waypoints) > 0:
+    			self.waypoint_transition()
+    		else:
+    			if np.linalg.norm(self.local_velocity[0:2]) < 1.0:
+    				self.landing_transition()
 
   def velocity_callback(self):
     """
@@ -75,16 +78,13 @@ class BackyardFlyer(Drone):
     
     1. Return waypoints to fly a box
     """
-    self.all_waypoints = [[10,  0, 5, 0],
-                       		[10, 10, 5, 0],
-                       	  [ 0, 10, 5, 0],
-                       	  [ 0,  0, 5, 0]]
+    print("Waypoints")
+    all_waypoints = [[10,  0, 5, 0],
+                     [10, 10, 5, 0],
+                  	 [ 0, 10, 5, 0],
+                  	 [ 0,  0, 5, 0]]
 
-    for corner in all_waypoints:
-    	drone.cmd_position(*corner)
-    	time.sleep(3)
-
-    return self.all_waypoints
+    return all_waypoints
 
   def arming_transition(self):
     """TODO: Fill out this method
@@ -122,19 +122,10 @@ class BackyardFlyer(Drone):
     2. Transition to WAYPOINT state
     """
     print("waypoint transition")
-
-    self.all_waypoints = [[10,  0, 5, 0],
-                       		[10, 10, 5, 0],
-                       	  [ 0, 10, 5, 0],
-                       	  [ 0,  0, 5, 0]]
-
-    for corner in self.all_waypoints:
-    	drone.cmd_position(*corner)
-    	time.sleep(3)
-
-    """self.cmd_position(10,10,5,0)"""
+    self.target_position = self.all_waypoints.pop(0)
+    self.cmd_position(self.target_position[0], self.target_position[1], self.target_position[2], 0.0)
     self.flight_state = States.WAYPOINT
-    self.landing_transition()
+
   def landing_transition(self):
     """TODO: Fill out this method
     
